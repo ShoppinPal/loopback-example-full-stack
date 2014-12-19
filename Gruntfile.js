@@ -465,10 +465,6 @@ module.exports = function (grunt) {
             // make sure all the download pipes finish  - step # 2
             downloaded.push(
               new Promise(function (resolve, reject) {
-                r.on('end', function () {
-                  console.log('pipe ended');
-                  return resolve();
-                });
                 r.on('finish', function () {
                   console.log('pipe finished');
                   return resolve();
