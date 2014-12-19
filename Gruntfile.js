@@ -117,6 +117,27 @@ module.exports = function (grunt) {
       }
     },
 
+    'swagger-js-codegen': {
+      options: {
+        apis: [
+          {
+            swagger: 'common/generated/swagger/todos.json',
+            fileName: 'todo.js',
+            className: 'todo',
+            moduleName: 'todo'
+          },
+          {
+            swagger: 'common/generated/swagger/users.json',
+            fileName: 'user.js',
+            className: 'user',
+            moduleName: 'user'
+          }
+        ],
+        dest: 'common/generated/nodejs-client'
+      },
+      dist: {}
+    },
+
     // Make sure code styles are up to par and there are no obvious mistakes
     jshint: {
       options: {
@@ -396,6 +417,79 @@ module.exports = function (grunt) {
         JSON.stringify(config, null, 2) +
         ';\n';
     fs.writeFileSync(outputPath, content, 'utf-8');
+  });
+
+  grunt.registerTask('swaggerGen', function() {
+    var done = this.async();
+
+    var loopbackApp = require('./server/server'); // the loopback app
+    var expressApp = require('loopback/node_modules/express')(); // a temporary express app for loopback-explorer
+    var swagger = require('loopback-explorer/lib/swagger');
+    swagger(loopbackApp, expressApp, { /* options */ });
+
+    var connectConfig = grunt.config.get().connect.options;
+    expressApp.listen(0, function() {
+      var port = this.address().port;
+      // NOTE: The express app created by `swagger(...)` is mounted by loopback-explorer on `/explorer` path.
+      // However, in the Gruntfile, we are starting this express app directly, therefore the URLs don't have
+      // the /explorer prefix.
+      var swaggerResourcesUrl = 'http://' + connectConfig.hostname + ':' + port + '/resources';
+
+      var Promise = require('bluebird');
+      var request = require('request');
+      var requestPromise = require('request-promise');
+
+      // (1) get a list of all the swagger resources
+      console.log(swaggerResourcesUrl);
+      requestPromise(swaggerResourcesUrl)
+        .then(function (response) {
+          var resources = JSON.parse(response);
+          //console.log(resources.apis);
+
+          var downloaded = []; // make sure all the download pipes finish - step # 1
+          var _ = require('underscore');
+          var fs = require('fs');
+          // (2) for each resource GET swagger spec
+          _.each(_.pluck(resources.apis, 'path'), function(path){
+            var filename = './common/generated/swagger' + path + '.json';
+            console.log(filename);
+            var r = request
+              .get(swaggerResourcesUrl + path)
+              .on('error', function(err) {
+                console.log(err);
+                done();
+              })
+              // (3) save the swagger spec in a file
+              .pipe(fs.createWriteStream(filename));
+
+            // make sure all the download pipes finish  - step # 2
+            downloaded.push(
+              new Promise(function (resolve, reject) {
+                r.on('end', function () {
+                  console.log('pipe ended');
+                  return resolve();
+                });
+                r.on('finish', function () {
+                  console.log('pipe finished');
+                  return resolve();
+                });
+              })
+            );
+          });
+
+          // make sure all the download pipes finish - step # 3
+          Promise.all(downloaded).then(function() {
+            console.log('all the files were downloaded');
+            done();
+            console.log('lets run swagger-js-codegen next');
+            // (4) generate code from the swagger spec files
+            return grunt.task.run([
+              'swagger-js-codegen'
+            ]);
+          });
+        })
+        .catch(console.error);
+    });
   });
 
   grunt.registerTask('run', 'Start the app server', function() {
