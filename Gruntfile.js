@@ -436,7 +436,6 @@ module.exports = function (grunt) {
       var swaggerResourcesUrl = 'http://' + connectConfig.hostname + ':' + port + '/resources';
 
       var Promise = require('bluebird');
-      var request = require('request');
       var requestPromise = require('request-promise');
 
       // (1) get a list of all the swagger resources
@@ -453,7 +452,7 @@ module.exports = function (grunt) {
           _.each(_.pluck(resources.apis, 'path'), function(path){
             var filename = './common/generated/swagger' + path + '.json';
             console.log(filename);
-            var r = request
+            var thenable = requestPromise
               .get(swaggerResourcesUrl + path)
               .on('error', function(err) {
                 console.log(err);
@@ -464,13 +463,14 @@ module.exports = function (grunt) {
 
             // make sure all the download pipes finish  - step # 2
             downloaded.push(
-              new Promise(function (resolve, reject) {
-                r.on('finish', function () {
+              new Promise(function (resolve/*, reject*/) {
+                thenable.on('finish', function () {
                   console.log('pipe finished');
                   return resolve();
                 });
               })
             );
+            downloaded.push(thenable);
           });
 
           // make sure all the download pipes finish - step # 3
