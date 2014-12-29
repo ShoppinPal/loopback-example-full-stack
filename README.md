@@ -8,11 +8,11 @@ This fork's `feature/nodejs-client` branch demonstrates how to generate nodejs c
 1. Clone the repo. `git clone https://github.com/ShoppinPal/loopback-example-full-stack.git`
 2. `cd loopback-example-full-stack`
 3. Checkout the branch: `git checkout -b feature/nodejs-client origin/feature/nodejs-client`
-4. `npm install` - install the root package dependencies
-5. `npm install grunt-cli -g` - skip if you have grunt-cli already installed
-6. `npm install bower -g` - skip if you have bower already installed
-8. `mkdir -p common/generated/swagger`
-7. `grunt swaggerGen` - generate nodejs clients for loopback models
+4. install the root package dependencies: `npm install`
+5. skip if you have grunt-cli already installed: `npm install grunt-cli -g`
+6. skip if you have bower already installed: `npm install bower -g`
+8. create a directory to house the swagger specs for your models: `mkdir -p common/generated/swagger`
+7. generate nodejs clients for loopback models: `grunt swaggerGen`
 
 ## Sanity Test
 
